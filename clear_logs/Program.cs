@@ -92,10 +92,10 @@ namespace ClearLogs
                 Console.WriteLine(
                     "The specified log directory '{0}' didn't contain any log files.", options.Directory);
 
-                return logFiles;
+                return Enumerable.Empty<string>();
             }
 
-            return Enumerable.Empty<string>();
+            return logFiles;
         }
 
         private static bool CheckLogDirectoryExists(CommandLineOptions options)
