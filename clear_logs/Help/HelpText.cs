@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Text;
@@ -19,10 +20,9 @@ namespace ClearLogs.Help
         private const int BuilderCapacity = 128;
         private const int DefaultMaximumLength = 80; // default console width
         private int? _maximumDisplayWidth;
-        private string _heading;
-        private readonly StringBuilder _preOptionsHelp;
-        private StringBuilder _optionsHelp;
-        private readonly StringBuilder _postOptionsHelp;
+        public StringBuilder PreOptionsHelp { get; private set; }
+        public StringBuilder OptionsHelp { get; private set; }
+        public StringBuilder PostOptionsHelp { get; private set; }
         private const string DefaultRequiredWord = "Required.";
 
         /// <summary>
@@ -31,31 +31,12 @@ namespace ClearLogs.Help
         public event EventHandler<FormatOptionHelpTextEventArgs> FormatOptionHelpText;
 
         /// <summary>
-        /// Message type enumeration.
-        /// </summary>
-        public enum MessageEnum : short
-        {
-            /// <summary>
-            /// Parsing error due to a violation of the format of an option value.
-            /// </summary>
-            ParsingErrorViolatesFormat,
-            /// <summary>
-            /// Parsing error due to a violation of mandatory option.
-            /// </summary>
-            ParsingErrorViolatesRequired,
-            /// <summary>
-            /// Parsing error due to a violation of the mutual exclusiveness of two or more option.
-            /// </summary>
-            ParsingErrorViolatesExclusiveness
-        }
-
-        /// <summary>
         /// Initializes a new instance of the <see cref="HelpText"/> class.
         /// </summary>
         public HelpText()
         {
-            _preOptionsHelp = new StringBuilder(BuilderCapacity);
-            _postOptionsHelp = new StringBuilder(BuilderCapacity);
+            PreOptionsHelp = new StringBuilder(BuilderCapacity);
+            PostOptionsHelp = new StringBuilder(BuilderCapacity);
             SentenceBuilder = BaseSentenceBuilder.CreateBuiltIn();
         }
 
@@ -101,7 +82,7 @@ namespace ClearLogs.Help
         public HelpText(string heading)
             : this()
         {
-            _heading = heading;
+            Heading = heading;
         }
 
         /// <summary>
@@ -115,7 +96,7 @@ namespace ClearLogs.Help
         public HelpText(string heading, object options)
             : this()
         {
-            _heading = heading;
+            Heading = heading;
             AddOptions(options);
         }
 
@@ -183,11 +164,14 @@ namespace ClearLogs.Help
 
         public static void DefaultParsingErrorsHandler(CommandLineOptionsBase options, HelpText current)
         {
+            if (options == null) throw new ArgumentNullException("options");
+            if (current == null) throw new ArgumentNullException("current");
+
             if (options.InternalLastPostParsingState.Errors.Count <= 0)
                 return;
 
             var errors = current.RenderParsingErrorsText(options, 2); // indent with two spaces
-            if (string.IsNullOrEmpty(errors))
+            if (string.IsNullOrWhiteSpace(errors))
                 return;
 
             current.AddPreOptionsLine(string.Concat(Environment.NewLine, current.SentenceBuilder.ErrorsHeadingText));
@@ -200,13 +184,7 @@ namespace ClearLogs.Help
         /// Sets the heading information string.
         /// You can directly assign a <see cref="HeadingInfo"/> instance.
         /// </summary>
-        public string Heading
-        {
-            set
-            {
-                _heading = value;
-            }
-        }
+        public string Heading { get; set; }
 
         /// <summary>
         /// Gets or sets the maximum width of the display.  This determines word wrap when displaying the text.
@@ -245,7 +223,7 @@ namespace ClearLogs.Help
 
         private void AddPreOptionsLine(string value, int maximumLength)
         {
-            AddLine(_preOptionsHelp, value, maximumLength);
+            AddLine(PreOptionsHelp, value, maximumLength);
         }
 
         /// <summary>
@@ -255,7 +233,7 @@ namespace ClearLogs.Help
         /// <exception cref="System.ArgumentNullException">Thrown when parameter <paramref name="value"/> is null or empty string.</exception>
         public void AddPostOptionsLine(string value)
         {
-            AddLine(_postOptionsHelp, value);
+            AddLine(PostOptionsHelp, value);
         }
 
         /// <summary>
@@ -303,10 +281,10 @@ namespace ClearLogs.Help
                 return;
             }
 
-            int maxLength = GetMaxLength(optionList);
-            _optionsHelp = new StringBuilder(BuilderCapacity);
-            int remainingSpace = maximumLength - (maxLength + 6);
-            foreach (BaseOptionAttribute option in optionList)
+            var maxLength = GetMaxLength(optionList);
+            OptionsHelp = new StringBuilder(BuilderCapacity);
+            var remainingSpace = maximumLength - (maxLength + 6);
+            foreach (var option in optionList)
             {
                 AddOption(requiredWord, maxLength, option, remainingSpace);
             }
@@ -324,6 +302,7 @@ namespace ClearLogs.Help
         /// </returns>
         public string RenderParsingErrorsText(CommandLineOptionsBase options, int indent)
         {
+            if (options == null) throw new ArgumentNullException("options");
             if (options.InternalLastPostParsingState.Errors.Count == 0)
             {
                 return string.Empty;
@@ -332,14 +311,14 @@ namespace ClearLogs.Help
             foreach (var e in options.InternalLastPostParsingState.Errors)
             {
                 var line = new StringBuilder();
-                line.Append(StringUtil.Spaces(indent));
-                if (!string.IsNullOrEmpty(e.BadOption.ShortName))
+                line.Append(new String(' ', indent));
+                if (!string.IsNullOrWhiteSpace(e.BadOption.ShortName))
                 {
                     line.Append('-');
                     line.Append(e.BadOption.ShortName);
-                    if (!string.IsNullOrEmpty(e.BadOption.LongName)) line.Append('/');
+                    if (!string.IsNullOrWhiteSpace(e.BadOption.LongName)) line.Append('/');
                 }
-                if (!string.IsNullOrEmpty(e.BadOption.LongName))
+                if (!string.IsNullOrWhiteSpace(e.BadOption.LongName))
                 {
                     line.Append("--");
                     line.Append(e.BadOption.LongName);
@@ -371,7 +350,7 @@ namespace ClearLogs.Help
 
         private void AddOption(string requiredWord, int maxLength, BaseOptionAttribute option, int widthOfHelpText)
         {
-            _optionsHelp.Append("  ");
+            OptionsHelp.Append("  ");
             var optionName = new StringBuilder(maxLength);
             if (option.HasShortName)
             {
@@ -398,21 +377,22 @@ namespace ClearLogs.Help
                 optionName.AppendFormat("{0}", option.LongName);
             }
 
-            _optionsHelp.Append(optionName.Length < maxLength
+            OptionsHelp.Append(optionName.Length < maxLength
                                     ? optionName.ToString().PadRight(maxLength)
                                     : optionName.ToString());
 
-            _optionsHelp.Append("    ");
+            OptionsHelp.Append("    ");
             if (option.Required)
             {
-                option.HelpText = String.Format("{0} ", requiredWord) + option.HelpText;
+                option.HelpText = 
+                    string.Format(CultureInfo.InvariantCulture, "{0} ", requiredWord) + option.HelpText;
             }
 
             var e = new FormatOptionHelpTextEventArgs(option);
             OnFormatOptionHelpText(e);
             option.HelpText = e.Option.HelpText;
 
-            if (!string.IsNullOrEmpty(option.HelpText))
+            if (!string.IsNullOrWhiteSpace(option.HelpText))
             {
                 do
                 {
@@ -422,17 +402,17 @@ namespace ClearLogs.Help
                     {
                         if (words[i].Length < (widthOfHelpText - wordBuffer))
                         {
-                            _optionsHelp.Append(words[i]);
+                            OptionsHelp.Append(words[i]);
                             wordBuffer += words[i].Length;
                             if ((widthOfHelpText - wordBuffer) > 1 && i != words.Length - 1)
                             {
-                                _optionsHelp.Append(" ");
+                                OptionsHelp.Append(" ");
                                 wordBuffer++;
                             }
                         }
                         else if (words[i].Length >= widthOfHelpText && wordBuffer == 0)
                         {
-                            _optionsHelp.Append(words[i].Substring(
+                            OptionsHelp.Append(words[i].Substring(
                                 0,
                                 widthOfHelpText
                                                      ));
@@ -449,17 +429,17 @@ namespace ClearLogs.Help
                         option.HelpText.Length
                                                                      ))
                         .Trim();
-                    if (option.HelpText.Length > 0)
-                    {
-                        _optionsHelp.Append(Environment.NewLine);
-                        _optionsHelp.Append(new string(' ', maxLength + 6));
-                    }
+
+                    if (option.HelpText.Length <= 0) continue;
+
+                    OptionsHelp.Append(Environment.NewLine);
+                    OptionsHelp.Append(new string(' ', maxLength + 6));
                 } while (option.HelpText.Length > widthOfHelpText);
             }
-            _optionsHelp.Append(option.HelpText);
-            _optionsHelp.Append(Environment.NewLine);
+            OptionsHelp.Append(option.HelpText);
+            OptionsHelp.Append(Environment.NewLine);
             if (AdditionalNewLineAfterOption)
-                _optionsHelp.Append(Environment.NewLine);
+                OptionsHelp.Append(Environment.NewLine);
         }
 
         /// <summary>
@@ -469,27 +449,27 @@ namespace ClearLogs.Help
         public override string ToString()
         {
             const int extraLength = 10;
-            var builder = new StringBuilder(GetLength(_heading) +
-                                             GetLength(_preOptionsHelp) + GetLength(_optionsHelp) + extraLength
+            var builder = new StringBuilder(GetLength(Heading) +
+                                             GetLength(PreOptionsHelp) + GetLength(OptionsHelp) + extraLength
                 );
 
-            builder.Append(_heading);
+            builder.Append(Heading);
 
-            if (_preOptionsHelp.Length > 0)
+            if (PreOptionsHelp.Length > 0)
             {
                 builder.Append(Environment.NewLine);
-                builder.Append(_preOptionsHelp);
+                builder.Append(PreOptionsHelp);
             }
-            if (_optionsHelp != null && _optionsHelp.Length > 0)
+            if (OptionsHelp != null && OptionsHelp.Length > 0)
             {
                 builder.Append(Environment.NewLine);
                 builder.Append(Environment.NewLine);
-                builder.Append(_optionsHelp);
+                builder.Append(OptionsHelp);
             }
-            if (_postOptionsHelp.Length > 0)
+            if (PostOptionsHelp.Length > 0)
             {
                 builder.Append(Environment.NewLine);
-                builder.Append(_postOptionsHelp);
+                builder.Append(PostOptionsHelp);
             }
 
             return builder.ToString();

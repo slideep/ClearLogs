@@ -8,7 +8,6 @@ namespace ClearLogs.Attributes
     [AttributeUsage(AttributeTargets.Property , AllowMultiple=false, Inherited=true)]
     public class OptionAttribute : BaseOptionAttribute
     {
-        private readonly string _uniqueName;
         private string _mutuallyExclusiveSet;
 
         internal const string DefaultMutuallyExclusiveSet = "Default";
@@ -20,22 +19,19 @@ namespace ClearLogs.Attributes
         /// <param name="longName">The long name of the option or null if not used.</param>
         public OptionAttribute(string shortName, string longName)
         {
-            if (!string.IsNullOrEmpty(shortName))
-                _uniqueName = shortName;
-            else if (!string.IsNullOrEmpty(longName))
-                _uniqueName = longName;
+            if (!string.IsNullOrWhiteSpace(shortName))
+                UniqueName = shortName;
+            else if (!string.IsNullOrWhiteSpace(longName))
+                UniqueName = longName;
 
-            if (_uniqueName == null)
+            if (UniqueName == null)
                 throw new InvalidOperationException();
 
             ShortName = shortName;
             LongName = longName;
         }
 
-        internal string UniqueName
-        {
-            get { return _uniqueName; }
-        }
+        internal string UniqueName { get; private set; }
 
         /// <summary>
         /// Gets or sets the option's mutually exclusive set.
@@ -44,7 +40,7 @@ namespace ClearLogs.Attributes
         {
             get { return _mutuallyExclusiveSet; }
             set {
-                _mutuallyExclusiveSet = string.IsNullOrEmpty(value) ? DefaultMutuallyExclusiveSet : value;
+                _mutuallyExclusiveSet = string.IsNullOrWhiteSpace(value) ? DefaultMutuallyExclusiveSet : value;
             }
         }
     }

@@ -14,74 +14,76 @@ namespace ClearLogs.Parser
 
         public override ParserState Parse(IArgumentEnumerator argumentEnumerator, OptionMap map, object options)
         {
-            IArgumentEnumerator group = new OneCharStringEnumerator(argumentEnumerator.Current.Substring(1));
-            while (group.MoveNext())
+            using (IArgumentEnumerator group = new OneCharStringEnumerator(argumentEnumerator.Current.Substring(1)))
             {
-                var option = map[group.Current];
-                if (option == null)
-                    return _ignoreUnkwnownArguments ? ParserState.MoveOnNextElement : ParserState.Failure;
-
-                option.IsDefined = true;
-
-                EnsureOptionArrayAttributeIsNotBoundToScalar(option);
-
-                if (!option.IsBoolean)
+                while (group.MoveNext())
                 {
-                    if (argumentEnumerator.IsLast && group.IsLast)
-                        return ParserState.Failure;
+                    var option = map[group.Current];
+                    if (option == null)
+                        return _ignoreUnkwnownArguments ? ParserState.MoveOnNextElement : ParserState.Failure;
 
-                    bool valueSetting;
-                    IList<string> items;
-                    if (!group.IsLast)
+                    option.IsDefined = true;
+
+                    EnsureOptionArrayAttributeIsNotBoundToScalar(option);
+
+                    if (!option.IsBoolean)
                     {
-                        if (!option.IsArray)
+                        if (argumentEnumerator.IsLast && group.IsLast)
+                            return ParserState.Failure;
+
+                        bool valueSetting;
+                        IList<string> items;
+                        if (!group.IsLast)
                         {
-                            valueSetting = option.SetValue(group.GetRemainingFromNext(), options);
+                            if (!option.IsArray)
+                            {
+                                valueSetting = option.SetValue(group.GetRemainingFromNext(), options);
+                                if (!valueSetting)
+                                    DefineOptionThatViolatesFormat(option);
+
+                                return BooleanToParserState(valueSetting);
+                            }
+
+                            EnsureOptionAttributeIsArrayCompatible(option);
+
+                            items = GetNextInputValues(argumentEnumerator);
+                            items.Insert(0, @group.GetRemainingFromNext());
+
+                            valueSetting = option.SetValue(items, options);
                             if (!valueSetting)
                                 DefineOptionThatViolatesFormat(option);
 
-                            return BooleanToParserState(valueSetting);
+                            return BooleanToParserState(valueSetting, true);
+                        }
+
+                        if (!argumentEnumerator.IsLast && !IsInputValue(argumentEnumerator.Next))
+                            return ParserState.Failure;
+                        if (!option.IsArray)
+                        {
+                            valueSetting = option.SetValue(argumentEnumerator.Next, options);
+                            if (!valueSetting)
+                                DefineOptionThatViolatesFormat(option);
+
+                            return BooleanToParserState(valueSetting, true);
                         }
 
                         EnsureOptionAttributeIsArrayCompatible(option);
 
                         items = GetNextInputValues(argumentEnumerator);
-                        items.Insert(0, @group.GetRemainingFromNext());
 
                         valueSetting = option.SetValue(items, options);
                         if (!valueSetting)
                             DefineOptionThatViolatesFormat(option);
 
-                        return BooleanToParserState(valueSetting, true);
+                        return BooleanToParserState(valueSetting);
                     }
 
-                    if (!argumentEnumerator.IsLast && !IsInputValue(argumentEnumerator.Next))
+                    if (!@group.IsLast && map[@group.Next] == null)
                         return ParserState.Failure;
-                    if (!option.IsArray)
-                    {
-                        valueSetting = option.SetValue(argumentEnumerator.Next, options);
-                        if (!valueSetting)
-                            DefineOptionThatViolatesFormat(option);
 
-                        return BooleanToParserState(valueSetting, true);
-                    }
-
-                    EnsureOptionAttributeIsArrayCompatible(option);
-
-                    items = GetNextInputValues(argumentEnumerator);
-
-                    valueSetting = option.SetValue(items, options);
-                    if (!valueSetting)
-                        DefineOptionThatViolatesFormat(option);
-
-                    return BooleanToParserState(valueSetting);
+                    if (!option.SetValue(true, options))
+                        return ParserState.Failure;
                 }
-
-                if (!@group.IsLast && map[@group.Next] == null)
-                    return ParserState.Failure;
-
-                if (!option.SetValue(true, options))
-                    return ParserState.Failure;
             }
 
             return ParserState.Success;

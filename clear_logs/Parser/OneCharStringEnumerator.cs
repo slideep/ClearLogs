@@ -1,5 +1,4 @@
 using System;
-using ClearLogs.Common;
 
 namespace ClearLogs.Parser
 {

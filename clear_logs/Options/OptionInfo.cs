@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
 using ClearLogs.Attributes;
@@ -15,11 +16,6 @@ namespace ClearLogs.Options
     {
         private readonly OptionAttribute _attribute;
         private readonly PropertyInfo _property;
-        private readonly bool _required;
-        private readonly string _helpText;
-        private readonly string _shortName;
-        private readonly string _longName;
-        private readonly string _mutuallyExclusiveSet;
         private readonly object _defaultValue;
         private readonly bool _hasDefaultValue;
         private readonly object _setValueLock = new object();
@@ -28,11 +24,11 @@ namespace ClearLogs.Options
         {
             if (attribute != null)
             {
-                _required = attribute.Required;
-                _helpText = attribute.HelpText;
-                _shortName = attribute.ShortName;
-                _longName = attribute.LongName;
-                _mutuallyExclusiveSet = attribute.MutuallyExclusiveSet;
+                Required = attribute.Required;
+                HelpText = attribute.HelpText;
+                ShortName = attribute.ShortName;
+                LongName = attribute.LongName;
+                MutuallyExclusiveSet = attribute.MutuallyExclusiveSet;
                 _defaultValue = attribute.DefaultValue;
                 _hasDefaultValue = attribute.HasDefaultValue;
                 _attribute = attribute;
@@ -53,10 +49,9 @@ namespace ClearLogs.Options
             {
                 var map = new OptionMap(list.Count, settings);
 
-                foreach (var pair in list)
+                foreach (var pair in list.Where(pair => pair != null && pair.Right != null))
                 {
-                    if (pair != null && pair.Right != null) 
-                        map[pair.Right.UniqueName] = new OptionInfo(pair.Right, pair.Left);
+                    map[pair.Right.UniqueName] = new OptionInfo(pair.Right, pair.Left);
                 }
 
                 map.RawOptions = target;
@@ -188,54 +183,29 @@ namespace ClearLogs.Options
 
         public void SetDefault(object options)
         {
-            if (_hasDefaultValue)
+            if (!_hasDefaultValue) return;
+            lock (_setValueLock)
             {
-                lock (_setValueLock)
+                try
                 {
-                    try
-                    {
-                        _property.SetValue(options, _defaultValue, null);
-                    }
-                    catch(Exception e)
-                    {
-                        throw new CommandLineParserException("Bad default value.", e);
-                    }
+                    _property.SetValue(options, _defaultValue, null);
+                }
+                catch(Exception e)
+                {
+                    throw new CommandLineParserException("Bad default value.", e);
                 }
             }
         }
 
-        public string ShortName
-        {
-            get { return _shortName; }
-        }
+        public string ShortName { get; private set; }
 
-        public string LongName
-        {
-            get { return _longName; }
-        }
+        public string LongName { get; private set; }
 
-        internal string NameWithSwitch
-        {
-            get
-            {
-                return _longName != null ? string.Concat("--", _longName) : string.Concat("-", _shortName);
-            }
-        }
+        public string MutuallyExclusiveSet { get; private set; }
 
-        public string MutuallyExclusiveSet
-        {
-            get { return _mutuallyExclusiveSet; }
-        }
+        public bool Required { get; private set; }
 
-        public bool Required
-        {
-            get { return _required; }
-        }
-
-        public string HelpText
-        {
-            get { return _helpText; }
-        }
+        public string HelpText { get; private set; }
 
         public bool IsBoolean
         {
@@ -256,7 +226,7 @@ namespace ClearLogs.Options
 
         public bool HasBothNames
         {
-            get { return (_shortName != null && _longName != null); }
+            get { return (ShortName != null && LongName != null); }
         }
     }
 }

@@ -49,12 +49,12 @@ namespace ClearLogs.Attributes
 
         internal bool HasShortName
         {
-            get { return !string.IsNullOrEmpty(_shortName); }
+            get { return !string.IsNullOrWhiteSpace(_shortName); }
         }
 
         internal bool HasLongName
         {
-            get { return !string.IsNullOrEmpty(LongName); }
+            get { return !string.IsNullOrWhiteSpace(LongName); }
         }
 
         internal bool HasDefaultValue { get; private set; }

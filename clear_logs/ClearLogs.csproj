@@ -44,6 +44,8 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <Prefer32Bit>false</Prefer32Bit>
+    <RunCodeAnalysis>true</RunCodeAnalysis>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -72,7 +74,6 @@
     <Compile Include="CommandLineOptions.cs" />
     <Compile Include="Common\Pair.cs" />
     <Compile Include="Common\ReflectionUtil.cs" />
-    <Compile Include="Common\StringUtil.cs" />
     <Compile Include="Help\BaseSentenceBuilder.cs" />
     <Compile Include="Help\EnglishSentenceBuilder.cs" />
     <Compile Include="Help\HeadingInfo.cs" />

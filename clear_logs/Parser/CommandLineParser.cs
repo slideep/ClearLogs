@@ -112,7 +112,7 @@ namespace ClearLogs.Parser
                 {
                     var argument = arguments.Current;
 
-                    if (string.IsNullOrEmpty(argument))
+                    if (string.IsNullOrWhiteSpace(argument))
                         continue;
 
                     var parser = ArgumentParser.Create(argument, _settings.IgnoreUnknownArguments);
@@ -150,13 +150,13 @@ namespace ClearLogs.Parser
 
             foreach (var t in args)
             {
-                if (!string.IsNullOrEmpty(helpOption.ShortName))
+                if (!string.IsNullOrWhiteSpace(helpOption.ShortName))
                 {
                     if (ArgumentParser.CompareShort(t, helpOption.ShortName, caseSensitive))
                         return true;
                 }
 
-                if (string.IsNullOrEmpty(helpOption.LongName)) 
+                if (string.IsNullOrWhiteSpace(helpOption.LongName)) 
                     continue;
 
                 if (ArgumentParser.CompareLong(t, helpOption.LongName, caseSensitive))

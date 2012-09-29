@@ -16,8 +16,6 @@ namespace ClearLogs.Attributes
         Inherited=true)]
     public sealed class ValueListAttribute : Attribute
     {
-        private readonly Type _concreteType;
-
         private ValueListAttribute()
         {
             MaximumElements = -1;
@@ -37,7 +35,7 @@ namespace ClearLogs.Attributes
             if (!typeof(IList<string>).IsAssignableFrom(concreteType))
                 throw new CommandLineParserException("The types are incompatible.");
 
-            _concreteType = concreteType;
+            ConcreteType = concreteType;
         }
 
         /// <summary>
@@ -47,10 +45,7 @@ namespace ClearLogs.Attributes
         /// </summary>
         public int MaximumElements { get; set; }
 
-        internal Type ConcreteType
-        {
-            get { return _concreteType; }
-        }
+        internal Type ConcreteType { get; private set; }
 
         internal static IList<string> GetReference(object target)
         {

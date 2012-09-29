@@ -40,24 +40,5 @@ namespace ClearLogs.Attributes
             _line5 = line5;
         }
 
-        internal void AddToHelpText(HelpText helpText, bool before)
-        {
-            if (before)
-            {
-                if (!string.IsNullOrEmpty(_line1)) helpText.AddPreOptionsLine(_line1);
-                if (!string.IsNullOrEmpty(_line2)) helpText.AddPreOptionsLine(_line2);
-                if (!string.IsNullOrEmpty(_line3)) helpText.AddPreOptionsLine(_line3);
-                if (!string.IsNullOrEmpty(_line4)) helpText.AddPreOptionsLine(_line4);
-                if (!string.IsNullOrEmpty(_line5)) helpText.AddPreOptionsLine(_line5);
-            }
-            else
-            {
-                if (!string.IsNullOrEmpty(_line1)) helpText.AddPostOptionsLine(_line1);
-                if (!string.IsNullOrEmpty(_line2)) helpText.AddPostOptionsLine(_line2);
-                if (!string.IsNullOrEmpty(_line3)) helpText.AddPostOptionsLine(_line3);
-                if (!string.IsNullOrEmpty(_line4)) helpText.AddPostOptionsLine(_line4);
-                if (!string.IsNullOrEmpty(_line5)) helpText.AddPostOptionsLine(_line5);
-            }
-        }
     }
 }

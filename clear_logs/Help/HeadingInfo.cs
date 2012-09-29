@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using System.Text;
-using ClearLogs.Common;
 
 namespace ClearLogs.Help
 {
@@ -44,7 +43,7 @@ namespace ClearLogs.Help
         /// <returns>The <see cref="System.String"/> that contains the heading informations.</returns>
         public override string ToString ()
         {
-            var isVersionNull = string.IsNullOrEmpty (_version);
+            var isVersionNull = string.IsNullOrWhiteSpace (_version);
             var builder = new StringBuilder (_programName.Length +
                                              (!isVersionNull ? _version.Length + 1 : 0)
                 );
@@ -65,7 +64,6 @@ namespace ClearLogs.Help
         public static implicit operator string (HeadingInfo info)
         {
             if (info == null) throw new ArgumentNullException("info");
-
             return info.ToString ();
         }
 
