@@ -4,7 +4,7 @@ using ClearLogs.Parser;
 namespace ClearLogs.Options
 {
     /// <summary>
-    /// Provides the abstract base class for a strongly typed options target. Used when you need to get parsing errors.
+    ///     Provides the abstract base class for a strongly typed options target. Used when you need to get parsing errors.
     /// </summary>
     public abstract class CommandLineOptionsBase
     {
@@ -13,11 +13,8 @@ namespace ClearLogs.Options
             LastPostParsingState = new PostParsingState(Enumerable.Empty<ParsingError>().ToList().AsReadOnly());
         }
 
-        protected PostParsingState LastPostParsingState { get; private set; }
+        private PostParsingState LastPostParsingState { get; }
 
-        internal PostParsingState InternalLastPostParsingState
-        {
-            get { return LastPostParsingState; }
-        }
+        internal PostParsingState InternalLastPostParsingState => LastPostParsingState;
     }
 }

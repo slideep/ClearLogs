@@ -7,38 +7,25 @@ namespace ClearLogs.Options
 {
     internal sealed class OptionMap
     {
-        sealed class MutuallyExclusiveInfo
-        {
-            public MutuallyExclusiveInfo(OptionInfo option)
-            {
-                BadOption = option; 
-            }
-            
-            public OptionInfo BadOption { get; private set; }
-            
-            public void IncrementOccurrence() { ++Occurrence; }
+        private readonly Dictionary<string, OptionInfo> _map;
+        private readonly Dictionary<string, MutuallyExclusiveInfo> _mutuallyExclusiveSetMap;
+        private readonly Dictionary<string, string> _names;
 
-            public int Occurrence { get; private set; }
-        }
-        
-        readonly CommandLineParserSettings _settings;
-        readonly Dictionary<string, string> _names;
-        readonly Dictionary<string, OptionInfo> _map;
-        readonly Dictionary<string, MutuallyExclusiveInfo> _mutuallyExclusiveSetMap;
+        private readonly CommandLineParserSettings _settings;
 
         public OptionMap(int capacity, CommandLineParserSettings settings)
         {
             _settings = settings;
 
-            IEqualityComparer<string> comparer = _settings.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
+            IEqualityComparer<string> comparer =
+                _settings.CaseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
 
             _names = new Dictionary<string, string>(capacity, comparer);
             _map = new Dictionary<string, OptionInfo>(capacity * 2, comparer);
 
             if (_settings.MutuallyExclusive)
-            {
-                _mutuallyExclusiveSetMap = new Dictionary<string, MutuallyExclusiveInfo>(capacity, StringComparer.OrdinalIgnoreCase);
-            }
+                _mutuallyExclusiveSetMap =
+                    new Dictionary<string, MutuallyExclusiveInfo>(capacity, StringComparer.OrdinalIgnoreCase);
         }
 
         public OptionInfo this[string key]
@@ -48,7 +35,9 @@ namespace ClearLogs.Options
                 OptionInfo option = null;
 
                 if (_map.ContainsKey(key))
+                {
                     option = _map[key];
+                }
                 else
                 {
                     if (_names.ContainsKey(key))
@@ -78,10 +67,7 @@ namespace ClearLogs.Options
 
         public void SetDefaults()
         {
-            foreach (var option in _map.Values)
-            {
-                option.SetDefault(RawOptions);
-            }
+            foreach (var option in _map.Values) option.SetDefault(RawOptions);
         }
 
         private bool EnforceRequiredRule()
@@ -91,6 +77,7 @@ namespace ClearLogs.Options
                 BuildAndSetPostParsingStateIfNeeded(RawOptions, option, true, null);
                 return false;
             }
+
             return true;
         }
 
@@ -100,9 +87,7 @@ namespace ClearLogs.Options
                 return true;
 
             foreach (var option in _map.Values.Where(option => option.IsDefined && option.MutuallyExclusiveSet != null))
-            {
                 BuildMutuallyExclusiveMap(option);
-            }
 
             foreach (var info in _mutuallyExclusiveSetMap.Values.Where(info => info.Occurrence > 1))
             {
@@ -118,32 +103,50 @@ namespace ClearLogs.Options
             var setName = option.MutuallyExclusiveSet;
 
             if (!_mutuallyExclusiveSetMap.ContainsKey(setName))
-            {
                 _mutuallyExclusiveSetMap.Add(setName, new MutuallyExclusiveInfo(option));
-            }
 
             _mutuallyExclusiveSetMap[setName].IncrementOccurrence();
         }
 
-        private static void BuildAndSetPostParsingStateIfNeeded(object options, OptionInfo option, bool? required, bool? mutualExclusiveness)
+        private static void BuildAndSetPostParsingStateIfNeeded(object options, OptionInfo option, bool? required,
+            bool? mutualExclusiveness)
         {
             var commandLineOptionsBase = options as CommandLineOptionsBase;
-            if (commandLineOptionsBase == null) 
+            if (commandLineOptionsBase == null)
                 return;
 
-            var error = new ParsingError {
-                                             BadOption = {
-                                                             ShortName = option.ShortName, 
-                                                             LongName = option.LongName
-                                                         }
-                                         };
+            var error = new ParsingError
+            {
+                BadOption =
+                {
+                    ShortName = option.ShortName,
+                    LongName = option.LongName
+                }
+            };
 
-            if (required != null) 
+            if (required != null)
                 error.ViolatesRequired = required.Value;
-            if (mutualExclusiveness != null) 
+            if (mutualExclusiveness != null)
                 error.ViolatesMutualExclusiveness = mutualExclusiveness.Value;
 
-            (commandLineOptionsBase).InternalLastPostParsingState.AddError(error);
+            commandLineOptionsBase.InternalLastPostParsingState.AddError(error);
+        }
+
+        private sealed class MutuallyExclusiveInfo
+        {
+            public MutuallyExclusiveInfo(OptionInfo option)
+            {
+                BadOption = option;
+            }
+
+            public OptionInfo BadOption { get; }
+
+            public int Occurrence { get; private set; }
+
+            public void IncrementOccurrence()
+            {
+                ++Occurrence;
+            }
         }
     }
 }

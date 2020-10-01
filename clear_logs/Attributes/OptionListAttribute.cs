@@ -3,15 +3,15 @@ using System;
 namespace ClearLogs.Attributes
 {
     /// <summary>
-    /// Models an option that can accept multiple values.
-    /// Must be applied to a field compatible with an <see cref="System.Collections.Generic.IList&lt;T&gt;"/> interface
-    /// of <see cref="System.String"/> instances.
+    ///     Models an option that can accept multiple values.
+    ///     Must be applied to a field compatible with an <see cref="System.Collections.Generic.IList&lt;T&gt;" /> interface
+    ///     of <see cref="System.String" /> instances.
     /// </summary>
-    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
+    [AttributeUsage(AttributeTargets.Property)]
     public sealed class OptionListAttribute : OptionAttribute
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="OptionListAttribute"/> class.
+        ///     Initializes a new instance of the <see cref="OptionListAttribute" /> class.
         /// </summary>
         /// <param name="shortName">The short name of the option or null if not used.</param>
         /// <param name="longName">The long name of the option or null if not used.</param>
@@ -22,7 +22,7 @@ namespace ClearLogs.Attributes
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="OptionListAttribute"/> class.
+        ///     Initializes a new instance of the <see cref="OptionListAttribute" /> class.
         /// </summary>
         /// <param name="shortName">The short name of the option or null if not used.</param>
         /// <param name="longName">The long name of the option or null if not used.</param>
@@ -34,7 +34,7 @@ namespace ClearLogs.Attributes
         }
 
         /// <summary>
-        /// Gets or sets the values separator character.
+        ///     Gets or sets the values separator character.
         /// </summary>
         public char Separator { get; set; }
     }

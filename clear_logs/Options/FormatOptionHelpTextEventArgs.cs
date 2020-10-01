@@ -33,22 +33,22 @@ using ClearLogs.Attributes;
 namespace ClearLogs.Options
 {
     /// <summary>
-    /// Provides data for the FormatOptionHelpText event.
+    ///     Provides data for the FormatOptionHelpText event.
     /// </summary>
     public class FormatOptionHelpTextEventArgs : EventArgs
     {
         /// <summary>
-        /// Initializes a new instance of the <see cref="FormatOptionHelpTextEventArgs"/> class.
+        ///     Initializes a new instance of the <see cref="FormatOptionHelpTextEventArgs" /> class.
         /// </summary>
         /// <param name="option">Option to format.</param>
-        public FormatOptionHelpTextEventArgs (BaseOptionAttribute option)
+        public FormatOptionHelpTextEventArgs(BaseOptionAttribute option)
         {
             Option = option;
         }
 
         /// <summary>
-        /// Gets the option to format.
+        ///     Gets the option to format.
         /// </summary>
-        public BaseOptionAttribute Option { get; private set; }
+        public BaseOptionAttribute Option { get; }
     }
 }

@@ -13,13 +13,11 @@ namespace ClearLogs.Parser
     /// </summary>
     public class CommandLineParser : ICommandLineParser
     {
-        public bool Singleton { get; set; }
         private readonly CommandLineParserSettings _settings;
 
         // special constructor for singleton instance, parameter ignored
         private CommandLineParser(bool singleton)
         {
-            Singleton = singleton;
             _settings = new CommandLineParserSettings(false, false, Console.Error);
         }
 
@@ -84,9 +82,9 @@ namespace ClearLogs.Parser
         {
             var pair = ReflectionUtil.RetrieveMethod<HelpOptionAttribute>(options);
 
-            if (pair != null && helpWriter != null)
+            if (helpWriter != null)
             {
-                if (ParseHelp(args, pair.Right) || !DoParseArguments(args, options))
+                if (ParseHelp(args, pair.Item2) || !DoParseArguments(args, options))
                 {
                     string helpText;
                     HelpOptionAttribute.InvokeMethod(options, pair, out helpText);
@@ -168,8 +166,7 @@ namespace ClearLogs.Parser
 
         private static void SetPostParsingStateIfNeeded(object options, IEnumerable<ParsingError> state)
         {
-            var commandLineOptionsBase = options as CommandLineOptionsBase;
-            if (commandLineOptionsBase != null)
+            if (options is CommandLineOptionsBase commandLineOptionsBase)
 
                 foreach (var parsingError in state)
                 {

@@ -2,18 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using ClearLogs.Common;
-using ClearLogs.Parser;
 
 namespace ClearLogs.Attributes
 {
     /// <summary>
-    /// Models a list of command line arguments that are not options.
-    /// Must be applied to a field compatible with an <see cref="System.Collections.Generic.IList&lt;T&gt;"/> interface
-    /// of <see cref="System.String"/> instances.
+    ///     Models a list of command line arguments that are not options.
+    ///     Must be applied to a field compatible with an <see cref="System.Collections.Generic.IList&lt;T&gt;" /> interface
+    ///     of <see cref="System.String" /> instances.
     /// </summary>
-    [AttributeUsage(AttributeTargets.Property,
-        AllowMultiple=false,
-        Inherited=true)]
+    [AttributeUsage(AttributeTargets.Property)]
     public sealed class ValueListAttribute : Attribute
     {
         private ValueListAttribute()
@@ -22,42 +19,24 @@ namespace ClearLogs.Attributes
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="ValueListAttribute"/> class.
-        /// </summary>
-        /// <param name="concreteType">A type that implements <see cref="System.Collections.Generic.IList&lt;T&gt;"/>.</param>
-        /// <exception cref="System.ArgumentNullException">Thrown if <paramref name="concreteType"/> is null.</exception>
-        public ValueListAttribute(Type concreteType)
-            : this()
-        {
-            if (concreteType == null)
-                throw new ArgumentNullException("concreteType");
-
-            if (!typeof(IList<string>).IsAssignableFrom(concreteType))
-                throw new CommandLineParserException("The types are incompatible.");
-
-            ConcreteType = concreteType;
-        }
-
-        /// <summary>
-        /// Gets or sets the maximum element allow for the list managed by <see cref="ValueListAttribute"/> type.
-        /// If lesser than 0, no upper bound is fixed.
-        /// If equal to 0, no elements are allowed.
+        ///     Gets or sets the maximum element allow for the list managed by <see cref="ValueListAttribute" /> type.
+        ///     If lesser than 0, no upper bound is fixed.
+        ///     If equal to 0, no elements are allowed.
         /// </summary>
         public int MaximumElements { get; set; }
 
-        internal Type ConcreteType { get; private set; }
+        private Type ConcreteType { get; }
 
         internal static IList<string> GetReference(object target)
         {
-            Type concreteType;
-            var property = GetProperty(target, out concreteType);
+            var property = GetProperty(target, out var concreteType);
 
             if (property == null || concreteType == null)
                 return null;
 
             property.SetValue(target, Activator.CreateInstance(concreteType), null);
-            
-            return (IList<string>)property.GetValue(target, null);
+
+            return (IList<string>) property.GetValue(target, null);
         }
 
         internal static ValueListAttribute GetAttribute(object target)
@@ -71,7 +50,7 @@ namespace ClearLogs.Attributes
 
             var pairZero = list[0];
 
-            return pairZero.Right;
+            return pairZero.Item2;
         }
 
         private static PropertyInfo GetProperty(object target, out Type concreteType)
@@ -85,10 +64,10 @@ namespace ClearLogs.Attributes
             if (list.Count > 1)
                 throw new InvalidOperationException();
 
-            var pairZero = list[0];
-            concreteType = pairZero.Right.ConcreteType;
+            var (propertyInfo, valueListAttribute) = list[0];
+            concreteType = valueListAttribute.ConcreteType;
 
-            return pairZero.Left;
+            return propertyInfo;
         }
     }
 }

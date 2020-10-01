@@ -15,12 +15,12 @@ namespace ClearLogs.Options
     internal sealed class OptionInfo
     {
         private readonly OptionAttribute _attribute;
-        private readonly PropertyInfo _property;
         private readonly object _defaultValue;
         private readonly bool _hasDefaultValue;
+        private readonly PropertyInfo _property;
         private readonly object _setValueLock = new object();
 
-        public OptionInfo(OptionAttribute attribute, PropertyInfo property)
+        private OptionInfo(OptionAttribute attribute, PropertyInfo property)
         {
             if (attribute != null)
             {
@@ -34,13 +34,35 @@ namespace ClearLogs.Options
                 _attribute = attribute;
             }
             else
+            {
                 throw new ArgumentNullException("attribute", "The attribute is mandatory");
+            }
 
             if (property != null)
                 _property = property;
             else
                 throw new ArgumentNullException("property", "The property is mandatory");
-        }   
+        }
+
+        public string ShortName { get; private set; }
+
+        public string LongName { get; private set; }
+
+        public string MutuallyExclusiveSet { get; }
+
+        public bool Required { get; }
+
+        private string HelpText { get; }
+
+        public bool IsBoolean => _property.PropertyType == typeof(bool);
+
+        public bool IsArray => _property.PropertyType.IsArray;
+
+        public bool IsAttributeArrayCompatible => _attribute is OptionArrayAttribute;
+
+        public bool IsDefined { get; set; }
+
+        public bool HasBothNames => ShortName != null && LongName != null;
 
         public static OptionMap CreateMap(object target, CommandLineParserSettings settings)
         {
@@ -49,10 +71,8 @@ namespace ClearLogs.Options
             {
                 var map = new OptionMap(list.Count, settings);
 
-                foreach (var pair in list.Where(pair => pair != null && pair.Right != null))
-                {
-                    map[pair.Right.UniqueName] = new OptionInfo(pair.Right, pair.Left);
-                }
+                foreach (var (propertyInfo, optionAttribute) in list.Where(pair => pair.Item2 != null))
+                    map[optionAttribute.UniqueName] = new OptionInfo(optionAttribute, propertyInfo);
 
                 map.RawOptions = target;
 
@@ -67,7 +87,9 @@ namespace ClearLogs.Options
             if (_attribute is OptionListAttribute)
                 return SetValueList(value, options);
 
-            return ReflectionUtil.IsNullableType(_property.PropertyType) ? SetNullableValue(value, options) : SetValueScalar(value, options);
+            return ReflectionUtil.IsNullableType(_property.PropertyType)
+                ? SetNullableValue(value, options)
+                : SetValueScalar(value, options);
         }
 
         public bool SetValue(IList<string> values, object options)
@@ -76,14 +98,14 @@ namespace ClearLogs.Options
             if (elementType != null)
             {
                 var array = Array.CreateInstance(elementType, values.Count);
-            
+
                 for (var i = 0; i < array.Length; i++)
-                {
                     try
                     {
                         lock (_setValueLock)
                         {
-                            array.SetValue(Convert.ChangeType(values[i], elementType, Thread.CurrentThread.CurrentCulture), i);
+                            array.SetValue(
+                                Convert.ChangeType(values[i], elementType, Thread.CurrentThread.CurrentCulture), i);
                             _property.SetValue(options, array, null);
                         }
                     }
@@ -91,7 +113,6 @@ namespace ClearLogs.Options
                     {
                         return false;
                     }
-                }
             }
 
             return true;
@@ -102,19 +123,17 @@ namespace ClearLogs.Options
             try
             {
                 if (_property.PropertyType.IsEnum)
-                {
                     lock (_setValueLock)
                     {
                         _property.SetValue(options, Enum.Parse(_property.PropertyType, value, true), null);
                     }
-                }
                 else
-                {
                     lock (_setValueLock)
                     {
-                        _property.SetValue(options, Convert.ChangeType(value, _property.PropertyType, Thread.CurrentThread.CurrentCulture), null);
+                        _property.SetValue(options,
+                            Convert.ChangeType(value, _property.PropertyType, Thread.CurrentThread.CurrentCulture),
+                            null);
                     }
-                }
             }
             catch (InvalidCastException) // Convert.ChangeType
             {
@@ -140,12 +159,13 @@ namespace ClearLogs.Options
             {
                 lock (_setValueLock)
                 {
-                    _property.SetValue(options, nc.ConvertFromString(null, Thread.CurrentThread.CurrentCulture, value), null);
+                    _property.SetValue(options, nc.ConvertFromString(null, Thread.CurrentThread.CurrentCulture, value),
+                        null);
                 }
             }
-                // the FormatException (thrown by ConvertFromString) is thrown as Exception.InnerException,
-                // so we've catch directly Exception
-            catch (Exception) 
+            // the FormatException (thrown by ConvertFromString) is thrown as Exception.InnerException,
+            // so we've catch directly Exception
+            catch (Exception)
             {
                 return false;
             }
@@ -169,13 +189,10 @@ namespace ClearLogs.Options
             {
                 _property.SetValue(options, new List<string>(), null);
 
-                var fieldRef = (IList<string>)_property.GetValue(options, null);
-                var values = value.Split(((OptionListAttribute)_attribute).Separator);
+                var fieldRef = (IList<string>) _property.GetValue(options, null);
+                var values = value.Split(((OptionListAttribute) _attribute).Separator);
 
-                foreach (var t in values)
-                {
-                    fieldRef.Add(t);
-                }
+                foreach (var t in values) fieldRef.Add(t);
 
                 return true;
             }
@@ -190,43 +207,11 @@ namespace ClearLogs.Options
                 {
                     _property.SetValue(options, _defaultValue, null);
                 }
-                catch(Exception e)
+                catch (Exception e)
                 {
                     throw new CommandLineParserException("Bad default value.", e);
                 }
             }
-        }
-
-        public string ShortName { get; private set; }
-
-        public string LongName { get; private set; }
-
-        public string MutuallyExclusiveSet { get; private set; }
-
-        public bool Required { get; private set; }
-
-        public string HelpText { get; private set; }
-
-        public bool IsBoolean
-        {
-            get { return _property.PropertyType == typeof(bool); }
-        }
-
-        public bool IsArray
-        {
-            get { return _property.PropertyType.IsArray; }
-        }
-
-        public bool IsAttributeArrayCompatible
-        {
-            get { return _attribute is OptionArrayAttribute; }
-        }
-
-        public bool IsDefined { get; set; }
-
-        public bool HasBothNames
-        {
-            get { return (ShortName != null && LongName != null); }
         }
     }
 }
