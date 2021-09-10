@@ -1,8 +1,8 @@
-﻿using System;
+﻿using CommandLine;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using ClearLogs.Parser;
 
 namespace ClearLogs
 {
@@ -18,79 +18,67 @@ namespace ClearLogs
         [STAThread]
         public static void Main(string[] args)
         {
-            var options = new CommandLineOptions();
-            if (!CommandLineParser.Default.ParseArguments(args, options))
+            Parser.Default.ParseArguments<Options>(args).WithParsed(o =>
             {
-                Console.WriteLine(options.Usage);
-                Console.ReadLine();
-                return;
-            }
+                if (!Exists(o.Directory))
+                {
+                    return;
+                }
 
-            if (CheckLogDirectoryExists(options)) 
-                return;
+                var logFiles = CheckLogDirectoryFilesExist(o.Directory);
 
-            var logFiles = 
-                new Func<CommandLineOptions, IEnumerable<string>>(CheckLogDirectoryFilesExist);
-                
+
             var isAnyLogFileCleared = false;
 
-            foreach (var logFileName in logFiles.Invoke(options))
-            {
-                try
+                foreach (var logFileName in logFiles)
                 {
-                    var logLines = File.ReadAllLines(logFileName).ToList();
-                    if (logLines.Count <= 0)
+                    try
                     {
-                        continue;
-                    }
+                        var logLines = File.ReadAllLines(logFileName).ToList();
+                        if (logLines.Count <= 0)
+                        {
+                            continue;
+                        }
 
-                    if (options.Verbose)
+                            Console.WriteLine(
+                                "Clearing log file '{0}' ({1} lines of text).", logFileName, logLines.Count);
+
+                        File.WriteAllLines(logFileName, Enumerable.Empty<string>().ToArray());
+
+                        isAnyLogFileCleared = true;
+                    }
+                    catch (UnauthorizedAccessException e)
                     {
-                        Console.WriteLine(
-                            "Clearing log file '{0}' ({1} lines of text).", logFileName, logLines.Count);
+                        Console.WriteLine(e.Message);
+                        return;
                     }
-
-                    File.WriteAllLines(logFileName, Enumerable.Empty<string>().ToArray());
-
-                    isAnyLogFileCleared = true;
+                    catch (IOException e)
+                    {
+                        Console.WriteLine(e.Message);
+                        return;
+                    }
                 }
-                catch (UnauthorizedAccessException e)
-                {
-                    Console.WriteLine(e.Message);
-                    return;
-                }
-                catch (IOException e)
-                {
-                    Console.WriteLine(e.Message);
-                    return;
-                }
-            }
 
-            Console.WriteLine(
-                isAnyLogFileCleared
-                    ? string.Format("Success! Cleared all log files at {0} successfully.", options.Directory)
-                    : string.Format("All clear! There wasn't any log files with log lines at {0} to clear.", options.Directory));
+                Console.WriteLine(
+                    isAnyLogFileCleared
+                        ? string.Format("Success! Cleared all log files at {0} successfully.", o.Directory)
+                        : string.Format("All clear! There wasn't any log files with log lines at {0} to clear.", o.Directory));
 
-            if (!options.IsInteractive)
-            {
-                return;
-            }
-      
-            Console.WriteLine("Press [Enter] to continue.");
-            Console.ReadLine();
+                Console.WriteLine("Press [Enter] to continue.");
+                Console.ReadLine();
+            });            
         }
 
-        private static IEnumerable<string> CheckLogDirectoryFilesExist(CommandLineOptions options)
+        private static IEnumerable<string> CheckLogDirectoryFilesExist(string path)
         {
-            if (options == null) 
-                throw new ArgumentNullException("options");
+            _ = path ?? throw new ArgumentNullException(nameof(path));
 
             var logFiles = 
-                Directory.GetFiles(options.Directory, "*.*", SearchOption.TopDirectoryOnly);
+                Directory.GetFiles(path, "*.*", SearchOption.TopDirectoryOnly);
             if (!logFiles.Any())
             {
                 Console.WriteLine(
-                    "The specified log directory '{0}' didn't contain any log files.", options.Directory);
+                    "The specified log directory '{0}' didn't contain any log files.", path);
 
                 return Enumerable.Empty<string>();
             }
@@ -98,20 +86,19 @@ namespace ClearLogs
             return logFiles;
         }
 
-        private static bool CheckLogDirectoryExists(CommandLineOptions options)
+        private static bool Exists(string path)
         {
-            if (options == null) 
-                throw new ArgumentNullException("options");
+            _ = path ?? throw new ArgumentNullException(nameof(path));
 
-            if (!Directory.Exists(options.Directory))
+            if (!Directory.Exists(path))
             {
                 Console.WriteLine(
-                    "The specified log directory '{0}' doesn't exist!", options.Directory);
+                    "The specified log directory '{0}' doesn't exist!", path);
 
-                return true;
+                return false;
             }
 
-            return false;
+            return true;
         }
     }
 }
