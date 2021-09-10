@@ -2,6 +2,8 @@
     <PropertyGroup>
         <OutputType>Exe</OutputType>
         <TargetFramework>net5.0</TargetFramework>
+        <StartupObject>ClearLogs.Program</StartupObject>
+        <AssemblyName>clear_logs</AssemblyName>
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="CommandLineParser" Version="2.8.0" />
