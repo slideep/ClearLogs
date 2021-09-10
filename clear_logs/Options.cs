@@ -4,7 +4,7 @@ namespace ClearLogs
 {
     public class Options
     {
-        [Option('d', "directory", Required = true, HelpText ="Set the directory where to clean up log files.")]
+        [Option('d', "directory", Required = true, HelpText = "Set the directory where to clean up log files.")]
         public string Directory { get; set; }
     }
 }

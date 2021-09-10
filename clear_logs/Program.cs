@@ -1,6 +1,7 @@
 ﻿using CommandLine;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 
@@ -15,20 +16,15 @@ namespace ClearLogs
         /// The main entrypoint for the console application.
         /// </summary>
         /// <param name="args"></param>
-        [STAThread]
         public static void Main(string[] args)
         {
             Parser.Default.ParseArguments<Options>(args).WithParsed(o =>
             {
-                if (!Exists(o.Directory))
-                {
-                    return;
-                }
+                if (!Exists(o.Directory)) return;
 
-                var logFiles = CheckLogDirectoryFilesExist(o.Directory);
+                var logFiles = CheckLogDirectoryFilesExist(o.Directory).ToImmutableList();
 
-
-            var isAnyLogFileCleared = false;
+                var isAnyLogFileCleared = false;
 
                 foreach (var logFileName in logFiles)
                 {
@@ -40,8 +36,7 @@ namespace ClearLogs
                             continue;
                         }
 
-                            Console.WriteLine(
-                                "Clearing log file '{0}' ({1} lines of text).", logFileName, logLines.Count);
+                        Console.WriteLine($"Clearing log file '{logFileName}' ({logLines.Count:N} lines of text).");
 
                         File.WriteAllLines(logFileName, Enumerable.Empty<string>().ToArray());
 
@@ -61,44 +56,44 @@ namespace ClearLogs
 
                 Console.WriteLine(
                     isAnyLogFileCleared
-                        ? string.Format("Success! Cleared all log files at {0} successfully.", o.Directory)
-                        : string.Format("All clear! There wasn't any log files with log lines at {0} to clear.", o.Directory));
+                        ? $"Success! Cleared all log files at {o.Directory} successfully."
+                        : $"All clear! There wasn't any log files with log lines at {o.Directory} to clear.");
 
                 Console.WriteLine("Press [Enter] to continue.");
                 Console.ReadLine();
-            });            
+            });
         }
 
         private static IEnumerable<string> CheckLogDirectoryFilesExist(string path)
         {
             _ = path ?? throw new ArgumentNullException(nameof(path));
 
-            var logFiles = 
+            var logFiles =
                 Directory.GetFiles(path, "*.*", SearchOption.TopDirectoryOnly);
-            if (!logFiles.Any())
+            if (logFiles.Any())
             {
-                Console.WriteLine(
-                    "The specified log directory '{0}' didn't contain any log files.", path);
-
-                return Enumerable.Empty<string>();
+                return logFiles;
             }
 
-            return logFiles;
+            Console.WriteLine(
+                "The specified log directory '{0}' didn't contain any log files.", path);
+
+            return Enumerable.Empty<string>();
         }
 
         private static bool Exists(string path)
         {
             _ = path ?? throw new ArgumentNullException(nameof(path));
 
-            if (!Directory.Exists(path))
+            if (Directory.Exists(path))
             {
-                Console.WriteLine(
-                    "The specified log directory '{0}' doesn't exist!", path);
-
-                return false;
+                return true;
             }
 
-            return true;
+            Console.WriteLine(
+                "The specified log directory '{0}' doesn't exist!", path);
+
+            return false;
         }
     }
 }
