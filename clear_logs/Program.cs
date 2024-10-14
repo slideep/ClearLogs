@@ -1,99 +1,134 @@
-﻿using CommandLine;
-using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
+﻿using System;
+using System.Collections.Concurrent;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
-using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Spectre.Console;
+using Spectre.Console.Cli;
 
-namespace ClearLogs
+namespace ClearLogs;
+
+public sealed class ClearLogsCommand : Command<ClearLogsCommand.Settings>
 {
-    /// <summary>
-    /// Clears all lines of text from the designated log file directory's files.
-    /// </summary>
-    public static class Program
+    private static readonly int MaxDegreeOfParallelism = Math.Min(8, Environment.ProcessorCount);
+
+    public override int Execute(CommandContext context, Settings settings)
     {
-        /// <summary>
-        /// The main entrypoint for the console application.
-        /// </summary>
-        /// <param name="args"></param>
-        public static void Main(string[] args)
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(settings);
+
+        var directory = settings.Directory;
+
+        if (!Exists(directory))
         {
-            Parser.Default.ParseArguments<Options>(args).WithParsed(o =>
+            return 1; // Non-zero exit code for failure
+        }
+
+        var logFiles = GetLogFiles(directory);
+
+        if (logFiles.Length == 0)
+        {
+            AnsiConsole.MarkupLine($"[yellow]The specified log directory '{directory}' contains no log files to clear.[/]");
+            return 0;
+        }
+
+        var clearedCount = 0;
+        var exceptions = new ConcurrentBag<Exception>();
+
+        var stopwatch = Stopwatch.StartNew();
+
+        Parallel.ForEach(
+            Partitioner.Create(0, logFiles.Length),
+            new ParallelOptions { MaxDegreeOfParallelism = MaxDegreeOfParallelism },
+            (range, _) =>
             {
-                if (!Exists(o.Directory)) return;
-
-                var logFiles = CheckLogDirectoryFilesExist(o.Directory).ToImmutableList();
-
-                var isAnyLogFileCleared = false;
-
-                foreach (var logFileName in logFiles)
+                for (int i = range.Item1; i < range.Item2; i++)
                 {
                     try
                     {
-                        var logLines = File.ReadAllLines(logFileName).ToList();
-                        if (logLines.Count <= 0)
+                        if (ClearLogFile(logFiles[i]))
                         {
-                            continue;
+                            Interlocked.Increment(ref clearedCount);
                         }
-
-                        Console.WriteLine($"Clearing log file '{logFileName}' ({logLines.Count:N} lines of text).");
-
-                        File.WriteAllLines(logFileName, Enumerable.Empty<string>().ToArray());
-
-                        isAnyLogFileCleared = true;
                     }
-                    catch (UnauthorizedAccessException e)
+                    catch (Exception ex)
                     {
-                        Console.WriteLine(e.Message);
-                        return;
-                    }
-                    catch (IOException e)
-                    {
-                        Console.WriteLine(e.Message);
-                        return;
+                        exceptions.Add(ex);
                     }
                 }
-
-                Console.WriteLine(
-                    isAnyLogFileCleared
-                        ? $"Success! Cleared all log files at {o.Directory} successfully."
-                        : $"All clear! There wasn't any log files with log lines at {o.Directory} to clear.");
-
-                Console.WriteLine("Press [Enter] to continue.");
-                Console.ReadLine();
             });
+
+        stopwatch.Stop();
+
+        foreach (var exception in exceptions)
+        {
+            AnsiConsole.WriteException(exception);
         }
 
-        private static IEnumerable<string> CheckLogDirectoryFilesExist(string path)
+        AnsiConsole.MarkupLine(clearedCount > 0
+            ? $"[green]Success! Cleared {clearedCount} log files in '{directory}' successfully in {stopwatch.ElapsedMilliseconds} ms.[/]"
+            : $"[yellow]No log files in '{directory}' had lines to clear.[/]");
+
+        AnsiConsole.MarkupLine("[blue]Press Enter to exit.[/]");
+        Console.ReadLine();
+
+        return 0;
+    }
+
+    private static string[] GetLogFiles(string path) =>
+        Directory.Exists(path)
+            ? Directory.GetFiles(path, "*.*", SearchOption.TopDirectoryOnly)
+            : Array.Empty<string>();
+
+    private static bool ClearLogFile(string logFileName)
+    {
+        var fileInfo = new FileInfo(logFileName);
+
+        if (fileInfo.Length == 0)
         {
-            _ = path ?? throw new ArgumentNullException(nameof(path));
-
-            var logFiles =
-                Directory.GetFiles(path, "*.*", SearchOption.TopDirectoryOnly);
-            if (logFiles.Any())
-            {
-                return logFiles;
-            }
-
-            Console.WriteLine(
-                "The specified log directory '{0}' didn't contain any log files.", path);
-
-            return Enumerable.Empty<string>();
-        }
-
-        private static bool Exists(string path)
-        {
-            _ = path ?? throw new ArgumentNullException(nameof(path));
-
-            if (Directory.Exists(path))
-            {
-                return true;
-            }
-
-            Console.WriteLine(
-                "The specified log directory '{0}' doesn't exist!", path);
-
             return false;
         }
+
+        AnsiConsole.MarkupLine($"[cyan]Clearing log file '{logFileName}' ({fileInfo.Length:N0} bytes).[/]");
+
+        using var fileStream = new FileStream(logFileName, FileMode.Truncate, FileAccess.Write, FileShare.None, 4096, FileOptions.WriteThrough);
+        fileStream.SetLength(0);
+
+        return true;
+    }
+
+    private static bool Exists(string? path)
+    {
+        if (string.IsNullOrEmpty(path))
+        {
+            AnsiConsole.MarkupLine("[red]The specified directory is invalid![/]");
+            return false;
+        }
+
+        if (Directory.Exists(path))
+        {
+            return true;
+        }
+
+        AnsiConsole.MarkupLine($"[red]The specified log directory '{path}' doesn't exist![/]");
+        return false;
+    }
+
+    public class Settings : CommandSettings
+    {
+        [CommandArgument(0, "<Directory>")]
+        [Description("The directory containing the log files to clear.")]
+        public string Directory { get; set; } = string.Empty;
+    }
+}
+
+public static class Program
+{
+    public static int Main(string[] args)
+    {
+        var app = new CommandApp<ClearLogsCommand>();
+        return app.Run(args);
     }
 }

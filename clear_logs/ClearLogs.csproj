@@ -1,11 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <OutputType>Exe</OutputType>
-        <TargetFramework>net5.0</TargetFramework>
-        <StartupObject>ClearLogs.Program</StartupObject>
+        <TargetFramework>net8.0</TargetFramework>
         <AssemblyName>clear_logs</AssemblyName>
+        <Nullable>enable</Nullable>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="CommandLineParser" Version="2.8.0"/>
+      <PackageReference Include="BenchmarkDotNet" Version="0.14.0" />
+      <PackageReference Include="Spectre.Console" Version="0.49.1" />
+      <PackageReference Include="Spectre.Console.Cli" Version="0.49.1" />
     </ItemGroup>
 </Project>
